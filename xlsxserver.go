@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 
 	"github.com/xlsx"
@@ -12,8 +13,11 @@ type KQreport struct {
 	index  int
 }
 
+const MAXLINE int = 2000
+const MAXCELL int = 20
+
 func readxlsx(url string) []KQreport {
-	reports := make([]KQreport, 0, 1000)
+	reports := make([]KQreport, 0, MAXLINE)
 
 	xlFile, err := xlsx.OpenFile(url)
 	if err != nil {
@@ -24,7 +28,7 @@ func readxlsx(url string) []KQreport {
 
 		for _, row := range sheet.Rows {
 			if index > 0 {
-				var results []string = make([]string, 0, 10)
+				var results []string = make([]string, 0, MAXCELL)
 				for _, cell := range row.Cells {
 					text := cell.String()
 					results = append(results, text)
@@ -51,7 +55,7 @@ func writeXlsx(url string, reports []KQreport) {
 	if len(url) > 1 {
 		name = url
 	} else {
-		name = "save.xlsx"
+		name = "save"
 	}
 	file = xlsx.NewFile()
 	sheet, err = file.AddSheet("Sheet1")
@@ -67,7 +71,15 @@ func writeXlsx(url string, reports []KQreport) {
 		}
 	}
 
-	err = file.Save(name)
+	d := 1
+	// isfile, err := PathExists(name + ".xlsx")
+	// if isfile {
+	// 	name = name + strconv.Itoa(d)
+	// }
+
+	usfile(&name, &d)
+
+	err = file.Save(name + ".xlsx")
 	if err != nil {
 		fmt.Printf(err.Error())
 	}
@@ -77,42 +89,49 @@ func writeXlsx(url string, reports []KQreport) {
 
 }
 
-func translateXl(i int, reports KQreport) []KQreport {
+func usfile(name *string, d *int) {
+	isfile, _ := PathExists(*name + ".xlsx")
+	if isfile {
+		*name += strconv.Itoa(*d)
+		*d++
+		usfile(name, d)
+	}
+}
+
+func translateXl(i int, reports KQreport) ([]KQreport, int) {
 	var index = i
-	indes := strconv.Itoa(index)
-	z_reports := make([]KQreport, 0, 1000)
+	// indes := strconv.Itoa(index)
+	z_reports := make([]KQreport, 0, MAXLINE)
 	// name := reports.result[0]
 	name := reports.result[1]
-	// dep := reports.result[2]
-	lottery1 := reports.result[5]
-	lottery2 := reports.result[6]
-	lottery3 := reports.result[7]
+	sim := reports.result[2]
+	dep := reports.result[3]
 
-	l1, _ := strconv.Atoi(lottery1)
-	l2, _ := strconv.Atoi(lottery2)
-	l3, _ := strconv.Atoi(lottery3)
+	lotterys := []string{reports.result[5], reports.result[6], reports.result[7]}
+
 	count := 0
-	for i := 0; i < l1; i++ {
-		cell := []string{indes, name + strconv.Itoa(count), "", "1", ""}
-		fmt.Println(cell)
-		report := KQreport{cell, index}
-		z_reports = append(z_reports, report)
-		count++
+	for tag, value := range lotterys {
+		tagss := strconv.Itoa(tag + 1)
+		ls, _ := strconv.Atoi(value)
+		for i := 0; i < ls; i++ {
+			cell := []string{strconv.Itoa(index), name + strconv.Itoa(count+1), sim, "", tagss, "", dep}
+			fmt.Println(cell)
+			report := KQreport{cell, index}
+			z_reports = append(z_reports, report)
+			count++
+			index++
+		}
 	}
+	return z_reports, index
+}
 
-	for i := 0; i < l2; i++ {
-		cell := []string{indes, name + strconv.Itoa(count), "", "2", ""}
-		report := KQreport{cell, index}
-		z_reports = append(z_reports, report)
-		count++
+func PathExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
 	}
-
-	for i := 0; i < l3; i++ {
-		cell := []string{indes, name + strconv.Itoa(count), "", "3", ""}
-		report := KQreport{cell, index}
-		z_reports = append(z_reports, report)
-		count++
+	if os.IsNotExist(err) {
+		return false, nil
 	}
-
-	return z_reports
+	return false, err
 }
